@@ -42,7 +42,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout', [OrderController::class, 'checkout'])->name('orders.checkout');
     Route::post('/checkout', [OrderController::class, 'placeOrder'])->name('orders.place');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/invoice/prepare', [OrderController::class, 'prepareInvoice'])->name('orders.invoice.prepare');
     Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
+    Route::get('/orders/{order}/invoice/history/{fileName}', [OrderController::class, 'downloadArchivedInvoice'])->name('orders.invoice.history');
 
     // Chat sama CS
     Route::get('/chat', [MessageController::class, 'index'])->name('chat.index');

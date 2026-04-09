@@ -71,7 +71,7 @@
                 ];
                 $navItems2 = [
                     ['route' => 'admin.users.index', 'routeIs' => 'admin.users.*', 'label' => 'Pengguna', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>'],
-                    ['route' => 'admin.messages.index', 'routeIs' => 'admin.messages.*', 'label' => 'Pesan', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/>'],
+                    ['route' => 'admin.messages.index', 'routeIs' => 'admin.messages.*', 'label' => 'Chat', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/>'],
                 ];
             @endphp
 
@@ -106,16 +106,49 @@
 
                 {{-- User & Logout --}}
                 <div class="border-t border-white/10 px-4 py-4">
+                    @php
+                        $adminUser = auth()->user();
+                        $adminInitial = strtoupper(substr($adminUser->name ?? 'A', 0, 1));
+                        $adminRole = ($adminUser->role ?? null) === 'ADMIN'
+                            ? 'Administrator'
+                            : ucfirst(strtolower($adminUser->role ?? 'Pengguna'));
+                        $adminStatus = ($adminUser->status ?? 'ACTIVE') === 'BANNED' ? 'Nonaktif' : 'Aktif';
+                        $adminStatusClasses = ($adminUser->status ?? 'ACTIVE') === 'BANNED'
+                            ? 'border-red-400/20 bg-red-400/10 text-red-200'
+                            : 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200';
+                        $adminProfileNote = filled($adminUser->address ?? null)
+                            ? \Illuminate\Support\Str::limit($adminUser->address, 56)
+                            : 'Lengkapi profil untuk memperbarui alamat dan keamanan akun.';
+                    @endphp
                     <div class="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-sm font-bold text-white shadow-lg shadow-emerald-500/15">
-                                {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
+                        <a href="{{ route('profile.edit') }}" class="group block rounded-[20px] border border-white/8 bg-white/[0.03] p-3 transition-all duration-200 hover:border-emerald-400/20 hover:bg-white/[0.07]">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-sm font-bold text-white shadow-lg shadow-emerald-500/15">
+                                    {{ $adminInitial }}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="truncate text-sm font-semibold text-white">{{ $adminUser->name ?? 'Admin' }}</p>
+                                        <span class="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] {{ $adminStatusClasses }}">
+                                            {{ $adminStatus }}
+                                        </span>
+                                    </div>
+                                    <p class="truncate text-[11px] uppercase tracking-[0.22em] text-slate-500">{{ $adminRole }}</p>
+                                    <p class="mt-1 truncate text-xs text-slate-400">{{ $adminUser->email ?? 'Email belum tersedia' }}</p>
+                                </div>
                             </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="truncate text-sm font-semibold text-white">{{ auth()->user()->name ?? 'Admin' }}</p>
-                                <p class="truncate text-[11px] uppercase tracking-[0.22em] text-slate-500">Administrator</p>
+
+                            <div class="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/25 px-3 py-2.5">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">Profil Admin</p>
+                                    <p class="mt-1 truncate text-xs text-slate-300">{{ $adminProfileNote }}</p>
+                                </div>
+                                <span class="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-200">
+                                    Edit
+                                    <svg class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                </span>
                             </div>
-                        </div>
+                        </a>
 
                         <form method="POST" action="{{ route('logout') }}" class="mt-4">
                             @csrf
