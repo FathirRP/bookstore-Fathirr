@@ -10,6 +10,8 @@ use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
@@ -20,6 +22,11 @@ class AdminController extends Controller
      */
     public function dashboard()
     {
+        $monthOrdersQuery = Order::whereBetween('created_at', [now()->startOfMonth(), now()->endOfDay()]);
+        $monthlyRevenue = (clone $monthOrdersQuery)->sum('total_amount');
+        $collectedRevenue = (clone $monthOrdersQuery)->where('status', 'COMPLETED')->sum('total_amount');
+        $outstandingRevenue = (clone $monthOrdersQuery)->whereIn('status', ['PROCESSING', 'SHIPPED'])->sum('total_amount');
+
         $stats = [
             'totalBooks' => Book::count(),
             'totalCategories' => Category::count(),
@@ -29,9 +36,17 @@ class AdminController extends Controller
             'totalMessages' => Message::where('is_admin', false)->where('is_read', false)->count(),
         ];
 
+        $dashboardFinance = [
+            'monthlyRevenue' => (int) $monthlyRevenue,
+            'collectedRevenue' => (int) $collectedRevenue,
+            'outstandingRevenue' => (int) $outstandingRevenue,
+            'monthlyOrders' => (clone $monthOrdersQuery)->count(),
+            'collectionRate' => $monthlyRevenue > 0 ? (int) round(($collectedRevenue / $monthlyRevenue) * 100) : 0,
+        ];
+
         $recentOrders = Order::with('user')->latest()->take(5)->get();
 
-        return view('admin.dashboard', compact('stats', 'recentOrders'));
+        return view('admin.dashboard', compact('stats', 'recentOrders', 'dashboardFinance'));
     }
 
     // ==================== NGATUR KATEGORI ====================
@@ -163,24 +178,21 @@ class AdminController extends Controller
      */
     public function booksStore(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'price' => 'required|integer|min:0',
-            'stock' => 'required|integer|min:0',
-            'category_id' => 'required|exists:categories,id',
-            'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
-        ]);
+        $validated = $this->validateBookRequest($request);
 
         try {
             $imagePath = $request->file('image')->store('books', 'public');
 
             Book::create([
-                'title' => $request->title,
-                'description' => $request->description,
-                'price' => $request->price,
-                'stock' => $request->stock,
-                'category_id' => $request->category_id,
+                'title' => $validated['title'],
+                'author' => $validated['author'],
+                'publisher' => $validated['publisher'],
+                'published_year' => $validated['published_year'],
+                'isbn' => $validated['isbn'],
+                'description' => $validated['description'],
+                'price' => $validated['price'],
+                'stock' => $validated['stock'],
+                'category_id' => $this->resolveBookCategoryId($validated),
                 'image_url' => '/storage/' . $imagePath,
             ]);
 
@@ -212,22 +224,25 @@ class AdminController extends Controller
      */
     public function booksUpdate(Request $request, Book $book)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'price' => 'required|integer|min:0',
-            'stock' => 'required|integer|min:0',
-            'category_id' => 'required|exists:categories,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-        ]);
+        $validated = $this->validateBookRequest($request, $book);
 
         try {
-            $data = $request->only(['title', 'description', 'price', 'stock', 'category_id']);
+            $data = [
+                'title' => $validated['title'],
+                'author' => $validated['author'],
+                'publisher' => $validated['publisher'],
+                'published_year' => $validated['published_year'],
+                'isbn' => $validated['isbn'],
+                'description' => $validated['description'],
+                'price' => $validated['price'],
+                'stock' => $validated['stock'],
+                'category_id' => $this->resolveBookCategoryId($validated),
+            ];
 
             if ($request->hasFile('image')) {
                 // Hapus gambar lama kalo ada
                 $oldPath = str_replace('/storage/', '', $book->image_url);
-                if (Storage::disk('public')->exists($oldPath)) {
+                if ($book->image_url && Storage::disk('public')->exists($oldPath)) {
                     Storage::disk('public')->delete($oldPath);
                 }
                 $imagePath = $request->file('image')->store('books', 'public');
@@ -240,6 +255,83 @@ class AdminController extends Controller
             Log::error('Gagal memperbarui buku: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Terjadi kesalahan saat memperbarui buku.')->withInput();
         }
+    }
+
+    /**
+     * Validasi request buku dan normalisasi input teks.
+     */
+    private function validateBookRequest(Request $request, ?Book $book = null): array
+    {
+        $request->merge([
+            'title' => $this->sanitizeTextInput($request->input('title')),
+            'author' => $this->sanitizeTextInput($request->input('author')),
+            'publisher' => $this->sanitizeTextInput($request->input('publisher')),
+            'isbn' => $this->sanitizeTextInput($request->input('isbn')),
+            'new_category_name' => $this->sanitizeTextInput($request->input('new_category_name')),
+        ]);
+
+        $currentYear = now()->year + 1;
+
+        return $request->validate([
+            'title' => 'required|string|max:255',
+            'author' => 'required|string|max:255',
+            'publisher' => 'required|string|max:255',
+            'published_year' => 'required|integer|digits:4|between:1000,' . $currentYear,
+            'isbn' => [
+                'required',
+                'string',
+                'max:32',
+                Rule::unique('books', 'isbn')->ignore($book?->id),
+            ],
+            'description' => 'required|string',
+            'price' => 'required|integer|min:0',
+            'stock' => 'required|integer|min:0',
+            'category_id' => 'nullable|exists:categories,id|required_without:new_category_name',
+            'new_category_name' => 'nullable|string|max:255|required_without:category_id',
+            'image' => ($book ? 'nullable' : 'required') . '|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'author.required' => 'Penulis wajib diisi.',
+            'publisher.required' => 'Penerbit wajib diisi.',
+            'published_year.required' => 'Tahun terbit wajib diisi.',
+            'published_year.between' => 'Tahun terbit tidak valid.',
+            'isbn.required' => 'ISBN wajib diisi.',
+            'isbn.unique' => 'ISBN sudah digunakan oleh buku lain.',
+            'category_id.required_without' => 'Pilih kategori yang ada atau tambahkan kategori baru.',
+            'new_category_name.required_without' => 'Pilih kategori yang ada atau tambahkan kategori baru.',
+        ]);
+    }
+
+    /**
+     * Menentukan kategori buku dari pilihan yang ada atau membuat kategori baru.
+     */
+    private function resolveBookCategoryId(array $validated): string
+    {
+        if (! empty($validated['new_category_name'])) {
+            $categoryName = $validated['new_category_name'];
+            $category = Category::whereRaw('LOWER(name) = ?', [Str::lower($categoryName)])->first();
+
+            if (! $category) {
+                $category = Category::create(['name' => $categoryName]);
+            }
+
+            return $category->id;
+        }
+
+        return $validated['category_id'];
+    }
+
+    /**
+     * Membersihkan input teks dan mengubah string kosong jadi null.
+     */
+    private function sanitizeTextInput(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $sanitizedValue = trim((string) $value);
+
+        return $sanitizedValue === '' ? null : $sanitizedValue;
     }
 
     /**

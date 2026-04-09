@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\CartController;
@@ -73,6 +74,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/books/{book}/edit', [AdminController::class, 'booksEdit'])->name('books.edit');
     Route::put('/books/{book}', [AdminController::class, 'booksUpdate'])->name('books.update');
     Route::delete('/books/{book}', [AdminController::class, 'booksDestroy'])->name('books.destroy');
+
+    // Laporan penjualan dan keuangan
+    Route::get('/reports', [AdminReportController::class, 'index'])->name('reports.index');
 
     // Ngatur pesanan
     Route::get('/orders', [AdminController::class, 'ordersIndex'])->name('orders.index');

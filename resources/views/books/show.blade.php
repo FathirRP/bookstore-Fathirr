@@ -40,6 +40,34 @@
 
                 {{-- Harga --}}
                 <p class="text-3xl font-extrabold text-emerald-700">Rp {{ number_format($book->price, 0, ',', '.') }}</p>
+                @if($book->author || $book->publisher || $book->published_year || $book->isbn)
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        @if($book->author)
+                            <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Penulis</p>
+                                <p class="mt-1 text-sm font-semibold text-gray-900">{{ $book->author }}</p>
+                            </div>
+                        @endif
+                        @if($book->publisher)
+                            <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Penerbit</p>
+                                <p class="mt-1 text-sm font-semibold text-gray-900">{{ $book->publisher }}</p>
+                            </div>
+                        @endif
+                        @if($book->published_year)
+                            <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Tahun Terbit</p>
+                                <p class="mt-1 text-sm font-semibold text-gray-900">{{ $book->published_year }}</p>
+                            </div>
+                        @endif
+                        @if($book->isbn)
+                            <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">ISBN</p>
+                                <p class="mt-1 text-sm font-semibold text-gray-900">{{ $book->isbn }}</p>
+                            </div>
+                        @endif
+                    </div>
+                @endif
 
                 {{-- Stok --}}
                 <div>

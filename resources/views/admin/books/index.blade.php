@@ -29,7 +29,10 @@
                                     <div class="w-11 h-14 rounded-lg overflow-hidden bg-slate-100 shadow-sm ring-1 ring-slate-200/50 shrink-0">
                                         <img src="{{ $book->image_url }}" alt="{{ $book->title }}" class="w-full h-full object-cover">
                                     </div>
-                                    <span class="text-sm font-semibold text-slate-800">{{ $book->title }}</span>
+                                    <div>
+                                        <p class="text-sm font-semibold text-slate-800">{{ $book->title }}</p>
+                                        <p class="text-xs text-slate-400 mt-0.5">{{ $book->author ?? 'Penulis belum diisi' }}</p>
+                                    </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4">
